@@ -42,6 +42,15 @@
     restart: $("#restart"),
     themeBtn: $("#themeBtn"),
     listBtn: $("#listBtn"),
+    settingsBtn: $("#settingsBtn"),
+    settingsPop: $("#settingsPop"),
+    popBackdrop: $("#popBackdrop"),
+    popClose: $("#popClose"),
+    voiceSelect: $("#voiceSelect"),
+    speedSelect: $("#speedSelect"),
+    autoSpeakCheck: $("#autoSpeakCheck"),
+    voiceTest: $("#voiceTest"),
+    toast: $("#toast"),
     sheet: $("#sheet"),
     sheetBody: $("#sheetBody"),
     sheetClose: $("#sheetClose"),
@@ -91,6 +100,8 @@
   var flipped = false;
   var current = null;
   var emptyPool = false;
+  var prefetchTimer = 0;
+  var toastTimer = 0;
 
   /* ---------------- 队列 ---------------- */
 
@@ -194,6 +205,12 @@
     els.stats.textContent = "认识 " + k + " · 模糊 " + f + " · 不认识 " + a;
 
     updateChips();
+
+    // 预热当前单词的音频，点喇叭时几乎零等待
+    if (window.FlashTTS) {
+      window.clearTimeout(prefetchTimer);
+      prefetchTimer = window.setTimeout(function () { window.FlashTTS.prefetch(w.en); }, 350);
+    }
   }
 
   function highlight(text, word) {
@@ -266,7 +283,7 @@
     els.card.classList.toggle("is-flipped", flipped);
     var w = current;
 
-    if (flipped && store.prefs.autoSpeak && store.filters.dir === "cn2en") speak(w.en);
+    if (flipped && store.prefs.autoSpeak && store.filters.dir === "cn2en") speakWord(w.en, null, true);
 
     var isEn = store.filters.dir === "en2cn";
     els.card.setAttribute("aria-label", flipped
@@ -295,7 +312,7 @@
     flipped = false;
     render();
 
-    if (queue.length && store.prefs.autoSpeak && store.filters.dir === "en2cn") speak(current.en);
+    if (queue.length && store.prefs.autoSpeak && store.filters.dir === "en2cn") speakWord(current.en, null, true);
     if (document.activeElement && document.activeElement.closest &&
         document.activeElement.closest(".rate")) document.activeElement.blur();
   }
@@ -312,21 +329,11 @@
     closeSheet();
   }
 
-  function speak(text) {
-    if (!text || !("speechSynthesis" in window)) return;
-    try {
-      window.speechSynthesis.cancel();
-      var u = new SpeechSynthesisUtterance(text);
-      u.lang = "en-US";
-      u.rate = 0.92;
-      u.pitch = 1;
-      var voices = window.speechSynthesis.getVoices().filter(function (v) { return /^en(-|_)/i.test(v.lang); });
-      if (voices.length) {
-        var preferred = voices.filter(function (v) { return /US/i.test(v.lang); })[0] || voices[0];
-        u.voice = preferred;
-      }
-      window.speechSynthesis.speak(u);
-    } catch (e) { /* 不支持时静默 */ }
+  function speakWord(text, btn, silent) {
+    if (!text) return;
+    if (window.FlashTTS && typeof window.FlashTTS.speak === "function") {
+      window.FlashTTS.speak(text, btn || null, { silent: !!silent });
+    }
   }
 
   /* ---------------- 工具栏 ---------------- */
@@ -362,7 +369,7 @@
     if (store.filters.dir === dir) return;
     store.filters.dir = dir;
     save(); flipped = false; render();
-    if (store.prefs.autoSpeak && dir === "en2cn") speak(current.en);
+    if (store.prefs.autoSpeak && dir === "en2cn") speakWord(current.en, null, true);
   }
 
   function cycleScope() {
@@ -440,6 +447,71 @@
     buildQueue();
   }
 
+  /* ---------------- 提示 / 发音设置 ---------------- */
+
+  function toast(msg) {
+    if (!els.toast) return;
+    els.toast.textContent = msg;
+    els.toast.classList.add("is-show");
+    window.clearTimeout(toastTimer);
+    toastTimer = window.setTimeout(function () { els.toast.classList.remove("is-show"); }, 2800);
+  }
+
+  function initTtsUI() {
+    var tts = window.FlashTTS;
+    if (!tts) {
+      if (els.settingsBtn) els.settingsBtn.hidden = true;
+      return;
+    }
+    tts.onNotice = toast;
+
+    tts.VOICES.forEach(function (v) {
+      var o = document.createElement("option");
+      o.value = v[0];
+      o.textContent = v[1];
+      els.voiceSelect.appendChild(o);
+    });
+    tts.SPEEDS.forEach(function (s) {
+      var o = document.createElement("option");
+      o.value = String(s);
+      o.textContent = s.toFixed(1) + "×" + (s < 0.9 ? "（慢）" : s > 1 ? "（快）" : "");
+      els.speedSelect.appendChild(o);
+    });
+
+    els.voiceSelect.value = tts.voice();
+    els.speedSelect.value = String(tts.speed());
+    els.autoSpeakCheck.checked = !!store.prefs.autoSpeak;
+
+    els.voiceSelect.addEventListener("change", function () {
+      tts.setVoice(els.voiceSelect.value);
+    });
+    els.speedSelect.addEventListener("change", function () {
+      tts.setSpeed(Number(els.speedSelect.value));
+    });
+    els.autoSpeakCheck.addEventListener("change", function () {
+      store.prefs.autoSpeak = els.autoSpeakCheck.checked;
+      save();
+      updateChips();
+    });
+    els.voiceTest.addEventListener("click", function () {
+      tts.speak("vocabulary", els.voiceTest);
+    });
+  }
+
+  function openSettings() {
+    if (!window.FlashTTS) return;
+    els.settingsPop.hidden = false;
+    els.popBackdrop.hidden = false;
+    els.settingsBtn.setAttribute("aria-expanded", "true");
+  }
+
+  function closeSettings() {
+    if (els.settingsPop.hidden) return;
+    els.settingsPop.hidden = true;
+    els.popBackdrop.hidden = true;
+    els.settingsBtn.setAttribute("aria-expanded", "false");
+  }
+
   /* ---------------- 事件 ---------------- */
 
   els.card.addEventListener("click", flip);
@@ -469,7 +541,7 @@
 
   els.speakBtn.addEventListener("click", function (e) {
     e.stopPropagation();
-    if (current) speak(current.en);
+    if (current) speakWord(current.en, els.speakBtn);
   });
 
   els.starBtn.addEventListener("click", function (e) {
@@ -484,6 +556,14 @@
 
   els.themeBtn.addEventListener("click", toggleTheme);
   els.resetBtn.addEventListener("click", resetProgress);
+
+  els.settingsBtn.addEventListener("click", function (e) {
+    e.stopPropagation();
+    if (els.settingsPop.hidden) openSettings();
+    else closeSettings();
+  });
+  els.popBackdrop.addEventListener("click", closeSettings);
+  els.popClose.addEventListener("click", closeSettings);
 
   els.listBtn.addEventListener("click", openSheet);
   els.sheetClose.addEventListener("click", closeSheet);
@@ -502,8 +582,9 @@
   });
 
   document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && !els.settingsPop.hidden) { closeSettings(); return; }
     if (e.key === "Escape" && !els.sheet.hidden) { closeSheet(); return; }
-    if (!els.sheet.hidden) return;
+    if (!els.sheet.hidden || !els.settingsPop.hidden) return;
     if (e.metaKey || e.ctrlKey || e.altKey) return;
 
     var tag = (e.target.tagName || "").toLowerCase();
@@ -539,15 +620,9 @@
 
   /* ---------------- 启动 ---------------- */
 
-  if (window.speechSynthesis) {
-    window.speechSynthesis.getVoices();
-    if (typeof window.speechSynthesis.addEventListener === "function") {
-      window.speechSynthesis.addEventListener("voiceschanged", function () {
-        window.speechSynthesis.getVoices();
-      });
-    }
-  }
-
+  initTtsUI();
   updateChips();
   buildQueue();
 })();
+
+
