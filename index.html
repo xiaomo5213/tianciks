@@ -29,11 +29,14 @@
     <div class="brand">
       <span class="seal" aria-hidden="true">词</span>
       <div class="brand-text">
-        <h1>填词补文 · 120 词闪卡</h1>
+        <h1><span class="t-long">填词补文 · 120 词闪卡</span><span class="t-short">填词补文闪卡</span></h1>
         <p>自考英语（专升本）· 5 天冲刺快刷</p>
       </div>
     </div>
     <div class="bar-tools">
+      <button class="icon-btn" id="settingsBtn" type="button" aria-label="发音设置" aria-expanded="false" aria-controls="settingsPop" title="发音设置">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3 1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg>
+      </button>
       <button class="icon-btn" id="themeBtn" type="button" aria-label="切换深色模式" title="切换深色模式">
         <svg class="i-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>
         <svg class="i-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
@@ -41,6 +44,30 @@
       <button class="icon-btn" id="listBtn" type="button" aria-label="打开词表" title="全部单词">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
       </button>
+    </div>
+
+    <div class="pop-backdrop" id="popBackdrop" hidden></div>
+    <div class="pop" id="settingsPop" hidden>
+      <div class="pop-head">
+        <strong>发音设置</strong>
+        <button type="button" class="pop-close" id="popClose" aria-label="关闭设置">×</button>
+      </div>
+      <label class="pop-row">
+        <span>音色</span>
+        <select id="voiceSelect" aria-label="选择英文音色"></select>
+      </label>
+      <label class="pop-row">
+        <span>语速</span>
+        <select id="speedSelect" aria-label="选择语速"></select>
+      </label>
+      <label class="pop-check">
+        <input type="checkbox" id="autoSpeakCheck">
+        <span>显示卡片时自动朗读</span>
+      </label>
+      <div class="pop-foot">
+        <button type="button" class="pop-test" id="voiceTest">试听</button>
+        <span>微信 / iOS 首次需点喇叭授权</span>
+      </div>
     </div>
   </header>
 
@@ -149,11 +176,14 @@
   </div>
 </div>
 
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
 <noscript>
   <p style="padding:24px;font:16px/1.7 system-ui;color:#211f1b">这个闪卡页面需要 JavaScript 才能翻面和记录进度，请开启后刷新。</p>
 </noscript>
 
 <script src="data/words.js"></script>
+<script src="assets/tts.js"></script>
 <script src="assets/app.js"></script>
 </body>
 </html>
